@@ -1,7 +1,6 @@
 package com.multimock.bpmn.controller;
 
 import org.camunda.bpm.engine.RuntimeService;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.runtime.ProcessInstanceWithVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,9 +26,10 @@ public class HomeController {
     @GetMapping("/searchfile")
     public @ResponseBody
     ResponseEntity getUserByLogin() {
-        logger.debug("executing process search file {}...", "C:\\TEMP\\demofile.txt");
+        logger.debug("executing process search file {}...", "C:\\TEMP\\demofile1.txt");
         Map<String, Object> variables = new HashMap<>();
-        variables.put("initial", "C:/TEMP/sprvm_4310671.log");
+        variables.put("initial", "C:/TEMP/demofile.txt");
+        variables.put("ERROR", new ArrayList<String>());
 //        variables.put("initial", "C:/TEMP/jawshtml.html");
 
         ProcessInstanceWithVariables instance = runtimeService.createProcessInstanceByKey("readFileProcess")

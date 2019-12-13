@@ -1,19 +1,16 @@
 package com.multimock.bpmn.process;
 
 import org.camunda.bpm.engine.delegate.DelegateExecution;
-import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class FindByRegExTask implements JavaDelegate {
+public class FindByRegExTask extends BaseTask {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Override
-    public void execute(DelegateExecution delegateExecution) throws Exception {
-        String input = (String) delegateExecution.getVariable("input");
+    public void executeTask(DelegateExecution delegateExecution) {
         String regex = (String) delegateExecution.getVariable("regex");
 
         Pattern p = Pattern.compile(regex);
