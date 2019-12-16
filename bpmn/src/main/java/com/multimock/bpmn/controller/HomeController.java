@@ -1,5 +1,8 @@
 package com.multimock.bpmn.controller;
 
+import com.multimock.bpmn.watcher.DirectoryWatcher;
+import com.multimock.bpmn.watcher.Watcher;
+import com.multimock.bpmn.watcher.WatcherParameter;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.runtime.ProcessInstanceWithVariables;
 import org.slf4j.Logger;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,25 +27,42 @@ public class HomeController {
     @Autowired
     private RuntimeService runtimeService;
 
+    @Autowired
+    private DirectoryWatcher dw;
+
     @GetMapping("/searchfile")
     public @ResponseBody
     ResponseEntity getUserByLogin() {
-        logger.debug("executing process search file {}...", "C:\\TEMP\\demofile1.txt");
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("initial", "C:/TEMP/demofile.txt");
-        variables.put("ERROR", new ArrayList<String>());
+        logger.debug("registering directory watcher...");
 //        variables.put("initial", "C:/TEMP/jawshtml.html");
 
-        ProcessInstanceWithVariables instance = runtimeService.createProcessInstanceByKey("readFileProcess")
-                .setVariables(variables)
-                .executeWithVariablesInReturn();
-        while (!instance.isEnded()){
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        String processResult = "temp";
+
+        Watcher dirWatcher = dw.create(Arrays.asList(
+                new WatcherParameter("path", "C:/TEMP"),
+                new WatcherParameter("repeat", true),
+                new WatcherParameter("watchFor", "create , modify")));
+
+        dirWatcher.start(filePath -> {
+            logger.debug("starting new process readFileProcess for file {}", filePath);
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("initial", filePath);
+            variables.put("ERROR", new ArrayList<String>());
+
+            ProcessInstanceWithVariables instance = runtimeService.createProcessInstanceByKey("readFileProcess")
+                    .setVariables(variables)
+                    .executeWithVariablesInReturn();
+            while (!instance.isEnded()){
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-        }
-        return ResponseEntity.ok(instance.getVariables().get("output"));
+            logger.debug("PROCESS RESULT: {}", instance.getVariables().get("output"));
+        });
+
+
+        return ResponseEntity.ok(processResult);
     }
 }
