@@ -13,6 +13,7 @@ public interface Watcher {
     List<WatcherParameter> getParameters();
 
     Watcher create(List<WatcherParameter> params);
+    Watcher create(List<WatcherParameter> params, String handle);
     void start(Consumer<Object> callback);
     void stop();
 }

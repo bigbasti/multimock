@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 @Controller
 @RequestMapping(path = "/api/bpmn")
@@ -37,13 +39,21 @@ public class HomeController {
 //        variables.put("initial", "C:/TEMP/jawshtml.html");
 
         String processResult = "temp";
+        AtomicInteger counter = new AtomicInteger();
 
-        Watcher dirWatcher = dw.create(Arrays.asList(
+        Watcher dirCreateWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "create , modify")));
+                new WatcherParameter("watchFor", "create")),
+                "Watcher-Create");
+        Watcher dirModifyWatcher = dw.create(Arrays.asList(
+                new WatcherParameter("path", "C:/TEMP"),
+                new WatcherParameter("repeat", true),
+                new WatcherParameter("watchFor", "modify")),
+                "Watcher-Modify");
 
-        dirWatcher.start(filePath -> {
+        Consumer<Object> handler = filePath -> {
+            counter.getAndIncrement();
             logger.debug("starting new process readFileProcess for file {}", filePath);
             Map<String, Object> variables = new HashMap<>();
             variables.put("initial", filePath);
@@ -60,7 +70,14 @@ public class HomeController {
                 }
             }
             logger.debug("PROCESS RESULT: {}", instance.getVariables().get("output"));
-        });
+            if (counter.get() == 3) {
+                logger.debug("canceling watcher...");
+                dw.stop(Thread.currentThread().getName());
+            }
+        };
+
+        dirCreateWatcher.start(handler);
+        dirModifyWatcher.start(handler);
 
 
         return ResponseEntity.ok(processResult);
