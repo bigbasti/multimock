@@ -1,5 +1,6 @@
 package com.multimock.bpmn.controller;
 
+import com.multimock.bpmn.service.ProcessService;
 import com.multimock.bpmn.watcher.DirectoryWatcher;
 import com.multimock.bpmn.watcher.Watcher;
 import com.multimock.bpmn.watcher.WatcherParameter;
@@ -32,6 +33,9 @@ public class HomeController {
     @Autowired
     private DirectoryWatcher dw;
 
+    @Autowired
+    private ProcessService processService;
+
     @GetMapping("/searchfile")
     public @ResponseBody
     ResponseEntity getUserByLogin() {
@@ -44,13 +48,11 @@ public class HomeController {
         Watcher dirCreateWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "create")),
-                "Watcher-Create");
+                new WatcherParameter("watchFor", "create")));
         Watcher dirModifyWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "modify")),
-                "Watcher-Modify");
+                new WatcherParameter("watchFor", "modify")));
 
         Consumer<Object> handler = filePath -> {
             counter.getAndIncrement();
@@ -70,9 +72,9 @@ public class HomeController {
                 }
             }
             logger.debug("PROCESS RESULT: {}", instance.getVariables().get("output"));
-            if (counter.get() == 3) {
-                logger.debug("canceling watcher...");
-                dw.stop(Thread.currentThread().getName());
+            if (counter.get() >= 3) {
+                logger.debug("canceling watcher for {}...", Thread.currentThread().getName());
+                processService.stopProcess(Thread.currentThread().getName());
             }
         };
 

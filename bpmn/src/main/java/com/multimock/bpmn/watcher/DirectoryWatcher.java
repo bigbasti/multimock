@@ -1,7 +1,10 @@
 package com.multimock.bpmn.watcher;
 
+import com.multimock.bpmn.service.ProcessService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -17,6 +20,11 @@ import java.util.function.Consumer;
 public class DirectoryWatcher implements Watcher {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    @Autowired
+    ProcessService processService;
+    @Autowired
+    private ApplicationContext context;
+
     private String watchPath;
     private WatchEvent.Kind [] watchFor;
     private boolean watchRepeat;
@@ -28,17 +36,13 @@ public class DirectoryWatcher implements Watcher {
         this.handle = "DW-" + new Random().nextInt(100);
     }
 
-    public DirectoryWatcher(String watchPath, WatchEvent.Kind[] watchFor, boolean watchRepeat) {
+    public DirectoryWatcher(String watchPath, WatchEvent.Kind[] watchFor, boolean watchRepeat, ApplicationContext ctx) {
         this.watchPath = watchPath;
         this.watchFor = watchFor;
         this.watchRepeat = watchRepeat;
-        this.handle = "DW-" + new Random().nextInt(100);
-    }
-    public DirectoryWatcher(String watchPath, WatchEvent.Kind[] watchFor, boolean watchRepeat, String handle) {
-        this.watchPath = watchPath;
-        this.watchFor = watchFor;
-        this.watchRepeat = watchRepeat;
-        this.handle = handle;
+        this.context = ctx;
+        this.handle = "DW-" + new Random().nextInt(10000);
+        this.processService = ctx.getBean(ProcessService.class);
     }
 
     @Override
@@ -74,13 +78,7 @@ public class DirectoryWatcher implements Watcher {
     public Watcher create(List<WatcherParameter> params) {
         logger.debug("creating DirectoryWatcher instance...");
         parseParemtersFromInput(params);
-        return new DirectoryWatcher(watchPath, watchFor, watchRepeat);
-    }
-    @Override
-    public Watcher create(List<WatcherParameter> params, String handle) {
-        logger.debug("creating DirectoryWatcher instance...");
-        parseParemtersFromInput(params);
-        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, handle);
+        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, context);
     }
 
     private void parseParemtersFromInput(List<WatcherParameter> params) {
@@ -128,7 +126,7 @@ public class DirectoryWatcher implements Watcher {
     }
 
     @Override
-    public void start(Consumer<Object> callback) {
+    public String start(Consumer<Object> callback) {
         logger.debug("starting DirectoryWatcher for {}", watchPath);
         Runnable runnable = () -> {
             Thread.currentThread().setName(handle);
@@ -140,11 +138,12 @@ public class DirectoryWatcher implements Watcher {
                 WatchKey key;
                 while ((key = ws.take()) != null && !abort) {
                     for (WatchEvent<?> event : key.pollEvents()) {
+                        Thread.sleep(50);
                         logger.trace("received {} event for {}", event.kind().name(), watchPath);
                         // check if the event is one of those we want to watch for
                         if (Arrays.stream(watchFor).anyMatch(k -> k.name().equals(event.kind().name()))) {
                             String combined = Paths.get(watchPath, event.context() + "").toAbsolutePath().toString();
-                            logger.debug("event {} is one of the trigger events -> trigger callback for {}", combined);
+                            logger.debug("event {} is one of the trigger events -> trigger callback for Watcher", combined);
                             callback.accept(combined);
                         }
                     }
@@ -159,8 +158,10 @@ public class DirectoryWatcher implements Watcher {
                 logger.error("error: ", e);
             }
         };
-        Thread execThread = new Thread(runnable);
-        execThread.start();
+
+        processService.startAsync(handle, this, runnable);
+
+        return this.handle;
     }
 
     @Override
@@ -169,15 +170,4 @@ public class DirectoryWatcher implements Watcher {
         this.abort = true;
     }
 
-    public void stop(String handle) {
-        logger.debug("aborting DirectoryWatcher for handle {}...", handle);
-        Thread[] activeThreads = new Thread[1];
-        Thread.enumerate(activeThreads);
-        Arrays.asList(activeThreads).forEach((Thread t) -> {
-            if (t.getName() == handle) {
-                t.interrupt();
-                logger.debug("sent interrupt to thread {} with name {}", t.getId(), t.getName());
-            }
-        });
-    }
 }
