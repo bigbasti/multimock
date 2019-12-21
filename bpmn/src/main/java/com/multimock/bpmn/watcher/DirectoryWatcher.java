@@ -14,36 +14,26 @@ import java.nio.file.WatchEvent.Kind;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.function.Consumer;
 
 @Component
-public class DirectoryWatcher implements Watcher {
+public class DirectoryWatcher implements Watcher{
     private Logger logger = LoggerFactory.getLogger(this.getClass());
-
-    @Autowired
-    ProcessService processService;
-    @Autowired
-    private ApplicationContext context;
 
     private String watchPath;
     private Kind [] watchFor;
     private boolean watchRepeat;
     private boolean abort = false;
+    private Consumer<Object> callback;
 
-    private String handle;
-
-    public DirectoryWatcher() {
-        this.handle = "DW-" + new Random().nextInt(100);
+    public DirectoryWatcher(){
     }
 
-    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, ApplicationContext ctx) {
+    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, Consumer<Object> callback) {
         this.watchPath = watchPath;
         this.watchFor = watchFor;
         this.watchRepeat = watchRepeat;
-        this.context = ctx;
-        this.handle = "DW-" + new Random().nextInt(10000000);
-        this.processService = ctx.getBean(ProcessService.class);
+        this.callback = callback;
     }
 
     @Override
@@ -76,10 +66,10 @@ public class DirectoryWatcher implements Watcher {
     }
 
     @Override
-    public Watcher create(List<WatcherParameter> params) {
+    public Watcher create(List<WatcherParameter> params, Consumer<Object> callback) {
         logger.debug("creating DirectoryWatcher instance...");
         parseParemtersFromInput(params);
-        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, context);
+        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, callback);
     }
 
     private void parseParemtersFromInput(List<WatcherParameter> params) {
@@ -127,55 +117,47 @@ public class DirectoryWatcher implements Watcher {
     }
 
     @Override
-    public String start(Consumer<Object> callback) {
-        logger.debug("starting DirectoryWatcher for {}", watchPath);
-        Runnable runnable = () -> {
-            Thread.currentThread().setName(handle);
-            try {
-                WatchService ws = FileSystems.getDefault().newWatchService();
-                Path path = Paths.get(watchPath);
-                path.register(ws, watchFor);
-
-                WatchKey key;
-                while ((key = ws.take()) != null && !abort) {
-                    // a modify event is being fired twice since there are two changes (file content and file attributes)
-                    // to avoid triggering the callback twice for each modify event, the process sleeps 50 msecs
-                    // this causes the file system watcher to group those two events to one with the count property set to 2
-                    // this results in a single execution of the callback instead of two
-                    Thread.sleep(50);
-                    for (WatchEvent<?> event : key.pollEvents()) {
-                        logger.trace("received {} event for {}", event.kind().name(), watchPath);
-                        // check if the event is one of those we want to watch for
-                        if (Arrays.stream(watchFor).anyMatch(k -> k.name().equals(event.kind().name()))) {
-                            String combined = Paths.get(watchPath, event.context() + "").toAbsolutePath().toString();
-                            logger.debug("event {} is one of the trigger events -> trigger callback for Watcher", combined);
-                            callback.accept(combined);
-                        }
-                    }
-                    if (watchRepeat && !abort) {
-                        logger.trace("waiting for the next directory event...");
-                        key.reset();
-                    }
-                }
-            } catch (IOException | InterruptedException e) {
-                if (e instanceof InterruptedException) {
-                    logger.debug("DirectoryWatcher for {} was aborted", watchPath);
-                } else {
-                    logger.error("error while watching directory {}", watchPath);
-                    logger.error("error: ", e);
-                }
-            }
-        };
-
-        processService.startAsync(handle, this, runnable);
-
-        return this.handle;
-    }
-
-    @Override
     public void stop() {
         logger.debug("aborting DirectoryWatcher...");
         this.abort = true;
     }
 
+    @Override
+    public void run() {
+        logger.debug("starting DirectoryWatcher for {}", watchPath);
+        try {
+            WatchService ws = FileSystems.getDefault().newWatchService();
+            Path path = Paths.get(watchPath);
+            path.register(ws, watchFor);
+
+            WatchKey key;
+            while ((key = ws.take()) != null && !abort) {
+                // a modify event is being fired twice since there are two changes (file content and file attributes)
+                // to avoid triggering the callback twice for each modify event, the process sleeps 50 msecs
+                // this causes the file system watcher to group those two events to one with the count property set to 2
+                // this results in a single execution of the callback instead of two
+                Thread.sleep(50);
+                for (WatchEvent<?> event : key.pollEvents()) {
+                    logger.trace("received {} event for {}", event.kind().name(), watchPath);
+                    // check if the event is one of those we want to watch for
+                    if (Arrays.stream(watchFor).anyMatch(k -> k.name().equals(event.kind().name()))) {
+                        String combined = Paths.get(watchPath, event.context() + "").toAbsolutePath().toString();
+                        logger.debug("event {} is one of the trigger events -> trigger callback for Watcher", combined);
+                        callback.accept(combined);
+                    }
+                }
+                if (watchRepeat && !abort) {
+                    logger.trace("waiting for the next directory event...");
+                    key.reset();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                logger.debug("DirectoryWatcher for {} was aborted", watchPath);
+            } else {
+                logger.error("error while watching directory {}", watchPath);
+                logger.error("error: ", e);
+            }
+        }
+    }
 }

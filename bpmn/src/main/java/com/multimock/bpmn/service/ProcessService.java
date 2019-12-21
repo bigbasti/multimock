@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Component
 public class ProcessService {
@@ -18,18 +19,19 @@ public class ProcessService {
     public ProcessService() {
     }
 
-    public Thread startAsync(String handle, Object content, Runnable runnable) {
-        logger.debug("starting async execution of thread {}", handle);
+    public void startWatcherAsync(Watcher watcher) {
+        String handle = "W-" + new Random().nextInt(10000000);
+        logger.debug("starting async execution of Watcher thread {}", handle);
         ProcessInstance pi = new ProcessInstance();
         pi.setHandle(handle);
-        pi.setContent(content);
+        pi.setContent(watcher);
 
-        Thread t = new Thread(runnable);
+        Thread t = new Thread(watcher);
+        t.setName(handle);
         pi.setThread(t);
         instances.add(pi);
 
         t.start();
-        return t;
     }
 
     public void stopProcess(String handle) {

@@ -44,16 +44,6 @@ public class HomeController {
 
         String processResult = "temp";
         AtomicInteger counter = new AtomicInteger();
-
-        Watcher dirCreateWatcher = dw.create(Arrays.asList(
-                new WatcherParameter("path", "C:/TEMP"),
-                new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "create")));
-        Watcher dirModifyWatcher = dw.create(Arrays.asList(
-                new WatcherParameter("path", "C:/TEMP"),
-                new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "modify")));
-
         Consumer<Object> handler = filePath -> {
             counter.getAndIncrement();
             logger.debug("starting new process readFileProcess for file {}", filePath);
@@ -78,9 +68,17 @@ public class HomeController {
             }
         };
 
-        dirCreateWatcher.start(handler);
-        dirModifyWatcher.start(handler);
+        Watcher dirCreateWatcher = dw.create(Arrays.asList(
+                new WatcherParameter("path", "C:/TEMP"),
+                new WatcherParameter("repeat", true),
+                new WatcherParameter("watchFor", "create")), handler);
+        Watcher dirModifyWatcher = dw.create(Arrays.asList(
+                new WatcherParameter("path", "C:/TEMP"),
+                new WatcherParameter("repeat", true),
+                new WatcherParameter("watchFor", "modify")), handler);
 
+        processService.startWatcherAsync(dirCreateWatcher);
+        processService.startWatcherAsync(dirModifyWatcher);
 
         return ResponseEntity.ok(processResult);
     }
