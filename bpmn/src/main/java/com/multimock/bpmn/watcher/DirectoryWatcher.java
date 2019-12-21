@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.WatchEvent.Kind;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,7 +27,7 @@ public class DirectoryWatcher implements Watcher {
     private ApplicationContext context;
 
     private String watchPath;
-    private WatchEvent.Kind [] watchFor;
+    private Kind [] watchFor;
     private boolean watchRepeat;
     private boolean abort = false;
 
@@ -36,12 +37,12 @@ public class DirectoryWatcher implements Watcher {
         this.handle = "DW-" + new Random().nextInt(100);
     }
 
-    public DirectoryWatcher(String watchPath, WatchEvent.Kind[] watchFor, boolean watchRepeat, ApplicationContext ctx) {
+    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, ApplicationContext ctx) {
         this.watchPath = watchPath;
         this.watchFor = watchFor;
         this.watchRepeat = watchRepeat;
         this.context = ctx;
-        this.handle = "DW-" + new Random().nextInt(10000);
+        this.handle = "DW-" + new Random().nextInt(10000000);
         this.processService = ctx.getBean(ProcessService.class);
     }
 
@@ -118,9 +119,9 @@ public class DirectoryWatcher implements Watcher {
             throw new InvalidPathException("", "A path must be provided in order for this watcher to work!");
         }
         this.watchPath = path;
-        this.watchFor = new WatchEvent.Kind[watchers.length];
+        this.watchFor = new Kind[watchers.length];
         for(int i = 0; i < watchers.length; i++){
-            this.watchFor[i] = (WatchEvent.Kind)watchers[i];
+            this.watchFor[i] = (Kind)watchers[i];
         }
         this.watchRepeat = repeat;
     }
@@ -137,8 +138,12 @@ public class DirectoryWatcher implements Watcher {
 
                 WatchKey key;
                 while ((key = ws.take()) != null && !abort) {
+                    // a modify event is being fired twice since there are two changes (file content and file attributes)
+                    // to avoid triggering the callback twice for each modify event, the process sleeps 50 msecs
+                    // this causes the file system watcher to group those two events to one with the count property set to 2
+                    // this results in a single execution of the callback instead of two
+                    Thread.sleep(50);
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        Thread.sleep(50);
                         logger.trace("received {} event for {}", event.kind().name(), watchPath);
                         // check if the event is one of those we want to watch for
                         if (Arrays.stream(watchFor).anyMatch(k -> k.name().equals(event.kind().name()))) {
@@ -152,10 +157,13 @@ public class DirectoryWatcher implements Watcher {
                         key.reset();
                     }
                 }
-                logger.debug("DirectoryWatcher for {} was aborted", watchPath);
             } catch (IOException | InterruptedException e) {
-                logger.error("error while watching directory {}", watchPath);
-                logger.error("error: ", e);
+                if (e instanceof InterruptedException) {
+                    logger.debug("DirectoryWatcher for {} was aborted", watchPath);
+                } else {
+                    logger.error("error while watching directory {}", watchPath);
+                    logger.error("error: ", e);
+                }
             }
         };
 
