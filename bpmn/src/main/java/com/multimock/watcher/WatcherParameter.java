@@ -1,4 +1,4 @@
-package com.multimock.bpmn.watcher;
+package com.multimock.watcher;
 
 import java.util.List;
 import java.util.Optional;

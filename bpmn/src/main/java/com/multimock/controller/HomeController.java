@@ -1,9 +1,9 @@
-package com.multimock.bpmn.controller;
+package com.multimock.controller;
 
-import com.multimock.bpmn.service.ProcessService;
-import com.multimock.bpmn.watcher.DirectoryWatcher;
-import com.multimock.bpmn.watcher.Watcher;
-import com.multimock.bpmn.watcher.WatcherParameter;
+import com.multimock.service.ProcessService;
+import com.multimock.watcher.DirectoryWatcher;
+import com.multimock.watcher.Watcher;
+import com.multimock.watcher.WatcherParameter;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.runtime.ProcessInstanceWithVariables;
 import org.slf4j.Logger;

@@ -1,4 +1,4 @@
-package com.multimock.bpmn;
+package com.multimock;
 
 import org.camunda.bpm.spring.boot.starter.annotation.EnableProcessApplication;
 import org.springframework.boot.SpringApplication;

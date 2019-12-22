@@ -1,4 +1,4 @@
-package com.multimock.bpmn.service;
+package com.multimock.service;
 
 public class ProcessInstance {
     private String handle;
