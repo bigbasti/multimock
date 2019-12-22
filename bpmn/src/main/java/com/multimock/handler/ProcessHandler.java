@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-public class ProcessHandler {
+public class ProcessHandler implements Handler {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private String name;
@@ -23,6 +23,7 @@ public class ProcessHandler {
         this.engine = engine;
     }
 
+    @Override
     public Function<Object, Object> getHandler() {
         Function<Object, Object> handler = filePath -> {
             logger.debug("starting new process readFileProcess for file {}", filePath);

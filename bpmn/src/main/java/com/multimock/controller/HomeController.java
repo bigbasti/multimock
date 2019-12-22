@@ -1,6 +1,7 @@
 package com.multimock.controller;
 
 import com.multimock.handler.ProcessHandler;
+import com.multimock.mock.ReactiveMock;
 import com.multimock.service.ProcessService;
 import com.multimock.watcher.DirectoryWatcher;
 import com.multimock.watcher.Watcher;
@@ -96,32 +97,22 @@ public class HomeController {
     ResponseEntity createWatcher() {
         logger.debug("registering directory watcher...");
 
-//        ReactiveMock mock = new ReactiveMock();
-//        mock
-//            .reactTo(dirModifyWatcher)
-//            .then(processHandler)
-//            .endWith();
-
-
         String processResult = "temp";
-        AtomicInteger counter = new AtomicInteger();
         ProcessHandler processHandler = new ProcessHandler("Handles file action inside a directory", "readFileProcess", runtimeService);
-        Function<Object, Object> handler = processHandler.getHandler();
-        Consumer<Object> resultHandler = result -> {
-          logger.warn("HANDLER RESULT: {}", result);
-        };
 
         Watcher dirCreateWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "create")), handler, resultHandler);
+                new WatcherParameter("watchFor", "create")));
         Watcher dirModifyWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "modify")), handler, resultHandler);
+                new WatcherParameter("watchFor", "modify")));
 
-        processService.startWatcherAsync(dirCreateWatcher);
-        processService.startWatcherAsync(dirModifyWatcher);
+        ReactiveMock mock = new ReactiveMock("Check modified files for regex", dirModifyWatcher, processHandler, processService);
+        mock.start();
+        ReactiveMock mock2 = new ReactiveMock("Check new files for regex", dirCreateWatcher, processHandler, processService);
+        mock2.start();
 
         return ResponseEntity.ok(processResult);
     }

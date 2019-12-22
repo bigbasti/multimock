@@ -23,17 +23,23 @@ public class DirectoryWatcher implements Watcher{
     private boolean watchRepeat;
     private boolean abort = false;
     private Function<Object, Object> handler;
-    private Consumer<Object> resultCallback;
+    private Consumer<Object> resultHandler;
 
     public DirectoryWatcher(){
     }
 
-    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, Function<Object, Object> handler, Consumer<Object> resultCallback) {
+    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat) {
+        this.watchPath = watchPath;
+        this.watchFor = watchFor;
+        this.watchRepeat = watchRepeat;
+    }
+
+    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, Function<Object, Object> handler, Consumer<Object> resultHandler) {
         this.watchPath = watchPath;
         this.watchFor = watchFor;
         this.watchRepeat = watchRepeat;
         this.handler = handler;
-        this.resultCallback = resultCallback;
+        this.resultHandler = resultHandler;
     }
 
     @Override
@@ -65,11 +71,16 @@ public class DirectoryWatcher implements Watcher{
         return params;
     }
 
+    public void setHandlers(Function<Object, Object> executionHandler, Consumer<Object> resultHandler) {
+        this.handler = executionHandler;
+        this.resultHandler = resultHandler;
+    }
+
     @Override
-    public Watcher create(List<WatcherParameter> params, Function<Object, Object> handler, Consumer<Object> resultCallback) {
+    public Watcher create(List<WatcherParameter> params) { //}, Function<Object, Object> handler, Consumer<Object> resultCallback) {
         logger.debug("creating DirectoryWatcher instance...");
         parseParemtersFromInput(params);
-        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, handler, resultCallback);
+        return new DirectoryWatcher(watchPath, watchFor, watchRepeat);
     }
 
     private void parseParemtersFromInput(List<WatcherParameter> params) {
@@ -144,7 +155,7 @@ public class DirectoryWatcher implements Watcher{
                         String combined = Paths.get(watchPath, event.context() + "").toAbsolutePath().toString();
                         logger.debug("event {} is one of the trigger events -> trigger callback for Watcher", combined);
                         Object processResult = handler.apply(combined);
-                        resultCallback.accept(processResult);
+                        resultHandler.accept(processResult);
                     }
                 }
                 if (watchRepeat && !abort) {
