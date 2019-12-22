@@ -4,19 +4,28 @@ import com.multimock.watcher.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.stream.Collectors;
 
-@Component
+@Service
 public class ProcessService {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private List<ProcessInstance> instances = new ArrayList<>();
 
     public ProcessService() {
+    }
+
+    public List<ProcessInstance> getRunningProcesses() {
+        return instances
+                .stream()
+                .filter(p -> !p.getThread().isInterrupted())
+                .collect(Collectors.toList());
     }
 
     public void startWatcherAsync(Watcher watcher) {

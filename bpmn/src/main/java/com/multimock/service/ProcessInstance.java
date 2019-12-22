@@ -1,7 +1,10 @@
 package com.multimock.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class ProcessInstance {
     private String handle;
+    @JsonIgnore
     private Thread thread;
     private Object content;
 
