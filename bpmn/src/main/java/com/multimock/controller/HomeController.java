@@ -1,5 +1,6 @@
 package com.multimock.controller;
 
+import com.multimock.handler.ProcessHandler;
 import com.multimock.service.ProcessService;
 import com.multimock.watcher.DirectoryWatcher;
 import com.multimock.watcher.Watcher;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Controller
 @RequestMapping(path = "/api/bpmn")
@@ -35,47 +37,88 @@ public class HomeController {
 
     @Autowired
     private ProcessService processService;
+//
+//    @GetMapping("/searchfile")
+//    public @ResponseBody
+//    ResponseEntity getUserByLogin() {
+//        logger.debug("registering directory watcher...");
+////        variables.put("initial", "C:/TEMP/jawshtml.html");
+//
+//        String processResult = "temp";
+//        AtomicInteger counter = new AtomicInteger();
+//        Function<Object, Object> handler = filePath -> {
+//            counter.getAndIncrement();
+//            logger.debug("starting new process readFileProcess for file {}", filePath);
+//            Map<String, Object> variables = new HashMap<>();
+//            variables.put("initial", filePath);
+//            variables.put("ERROR", new ArrayList<String>());
+//
+//            ProcessInstanceWithVariables instance = runtimeService.createProcessInstanceByKey("readFileProcess")
+//                    .setVariables(variables)
+//                    .executeWithVariablesInReturn();
+//            while (!instance.isEnded()){
+//                try {
+//                    Thread.sleep(100);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            logger.debug("PROCESS RESULT: {}", instance.getVariables().get("output"));
+//            if (counter.get() >= 3) {
+//                logger.debug("canceling watcher for {}...", Thread.currentThread().getName());
+//                processService.stopProcess(Thread.currentThread().getName());
+//            }
+//            return instance.getVariables().get("output");
+//        };
+//        handler.andThen(res -> {
+//            logger.warn("HANDLER RESULT {}", res);
+//            return null;
+//        });
+//
+//        Watcher dirCreateWatcher = dw.create(Arrays.asList(
+//                new WatcherParameter("path", "C:/TEMP"),
+//                new WatcherParameter("repeat", true),
+//                new WatcherParameter("watchFor", "create")), handler);
+//        Watcher dirModifyWatcher = dw.create(Arrays.asList(
+//                new WatcherParameter("path", "C:/TEMP"),
+//                new WatcherParameter("repeat", true),
+//                new WatcherParameter("watchFor", "modify")), handler);
+//
+//
+//        processService.startWatcherAsync(dirCreateWatcher);
+//        processService.startWatcherAsync(dirModifyWatcher);
+//
+//        return ResponseEntity.ok(processResult);
+//    }
 
-    @GetMapping("/searchfile")
+    @GetMapping("/searchfile2")
     public @ResponseBody
-    ResponseEntity getUserByLogin() {
+    ResponseEntity createWatcher() {
         logger.debug("registering directory watcher...");
-//        variables.put("initial", "C:/TEMP/jawshtml.html");
+
+//        ReactiveMock mock = new ReactiveMock();
+//        mock
+//            .reactTo(dirModifyWatcher)
+//            .then(processHandler)
+//            .endWith();
+
 
         String processResult = "temp";
         AtomicInteger counter = new AtomicInteger();
-        Consumer<Object> handler = filePath -> {
-            counter.getAndIncrement();
-            logger.debug("starting new process readFileProcess for file {}", filePath);
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("initial", filePath);
-            variables.put("ERROR", new ArrayList<String>());
-
-            ProcessInstanceWithVariables instance = runtimeService.createProcessInstanceByKey("readFileProcess")
-                    .setVariables(variables)
-                    .executeWithVariablesInReturn();
-            while (!instance.isEnded()){
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            logger.debug("PROCESS RESULT: {}", instance.getVariables().get("output"));
-            if (counter.get() >= 3) {
-                logger.debug("canceling watcher for {}...", Thread.currentThread().getName());
-                processService.stopProcess(Thread.currentThread().getName());
-            }
+        ProcessHandler processHandler = new ProcessHandler("Handles file action inside a directory", "readFileProcess", runtimeService);
+        Function<Object, Object> handler = processHandler.getHandler();
+        Consumer<Object> resultHandler = result -> {
+          logger.warn("HANDLER RESULT: {}", result);
         };
 
         Watcher dirCreateWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "create")), handler);
+                new WatcherParameter("watchFor", "create")), handler, resultHandler);
         Watcher dirModifyWatcher = dw.create(Arrays.asList(
                 new WatcherParameter("path", "C:/TEMP"),
                 new WatcherParameter("repeat", true),
-                new WatcherParameter("watchFor", "modify")), handler);
+                new WatcherParameter("watchFor", "modify")), handler, resultHandler);
 
         processService.startWatcherAsync(dirCreateWatcher);
         processService.startWatcherAsync(dirModifyWatcher);

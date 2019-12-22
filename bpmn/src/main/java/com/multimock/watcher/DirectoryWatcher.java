@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Component
 public class DirectoryWatcher implements Watcher{
@@ -21,16 +22,18 @@ public class DirectoryWatcher implements Watcher{
     private Kind [] watchFor;
     private boolean watchRepeat;
     private boolean abort = false;
-    private Consumer<Object> callback;
+    private Function<Object, Object> handler;
+    private Consumer<Object> resultCallback;
 
     public DirectoryWatcher(){
     }
 
-    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, Consumer<Object> callback) {
+    public DirectoryWatcher(String watchPath, Kind[] watchFor, boolean watchRepeat, Function<Object, Object> handler, Consumer<Object> resultCallback) {
         this.watchPath = watchPath;
         this.watchFor = watchFor;
         this.watchRepeat = watchRepeat;
-        this.callback = callback;
+        this.handler = handler;
+        this.resultCallback = resultCallback;
     }
 
     @Override
@@ -63,10 +66,10 @@ public class DirectoryWatcher implements Watcher{
     }
 
     @Override
-    public Watcher create(List<WatcherParameter> params, Consumer<Object> callback) {
+    public Watcher create(List<WatcherParameter> params, Function<Object, Object> handler, Consumer<Object> resultCallback) {
         logger.debug("creating DirectoryWatcher instance...");
         parseParemtersFromInput(params);
-        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, callback);
+        return new DirectoryWatcher(watchPath, watchFor, watchRepeat, handler, resultCallback);
     }
 
     private void parseParemtersFromInput(List<WatcherParameter> params) {
@@ -140,7 +143,8 @@ public class DirectoryWatcher implements Watcher{
                     if (Arrays.stream(watchFor).anyMatch(k -> k.name().equals(event.kind().name()))) {
                         String combined = Paths.get(watchPath, event.context() + "").toAbsolutePath().toString();
                         logger.debug("event {} is one of the trigger events -> trigger callback for Watcher", combined);
-                        callback.accept(combined);
+                        Object processResult = handler.apply(combined);
+                        resultCallback.accept(processResult);
                     }
                 }
                 if (watchRepeat && !abort) {
